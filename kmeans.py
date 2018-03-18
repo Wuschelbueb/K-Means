@@ -1,6 +1,5 @@
 import numpy as np
 from numpy import inf
-from numpy import nan
 import scipy.spatial
 import csv
 
@@ -9,8 +8,7 @@ def load_data(filename):
     csv_array = np.genfromtxt(filename, delimiter=',', dtype=int)
     #array[row, column]
     samples = csv_array[:,1:]
-    labels = csv_array[:,0]
-    return samples, labels
+    return samples
 
 def initial_cluster_centers(train_samples, k):
     cluster_center = np.empty([k,784], dtype=int)
@@ -24,32 +22,77 @@ def euclidean_distance(train_samples, cluster_center):
     best_distance = best_distance[:,0]
     return best_distance
 
-def calculate_new_cluster_center(train_samples, distance):
-    #only works for k=3, needs to change
+def assign_data_to_clusters(train_samples, distance):
+    sorted_cluster = []
     clusters = np.unique(distance)
-    cluster_1 = np.where(distance==clusters[0])[0]
-    cluster_2 = np.where(distance==clusters[1])[0]
-    cluster_3 = np.where(distance==clusters[2])[0]
+    #assign each element of training set to the cluster with the shortest distance
+    for i in range(len(clusters)):
+        sorted_cluster.append(np.where(distance==clusters[i])[0])
+    return sorted_cluster
 
-    test = np.divide(
-        np.sum(train_samples[cluster_1], axis=0),
-        np.absolute(train_samples[cluster_1])
+def calculate_new_cluster_center(train_samples, sorted_cluster):
+    new_center = []
+    #calculate new center
+    for j in range(len(sorted_cluster)):
+        new_center.append(
+            np.divide(
+                np.sum(train_samples[sorted_cluster[j]], axis=0),
+                len(train_samples[sorted_cluster[j]])
+            )
         )
-    test[(test == inf) | (np.isnan(test))] = 0
+    new_center = np.array(new_center)
+    return new_center
 
-    return 2
+def calc_dunn_index(train_samples, sorted_cluster):
+    max_within_cluster = []
+    for i in range(len(sorted_cluster)):
+        distance = scipy.spatial.distance.cdist(
+            train_samples[sorted_cluster[i]], 
+            train_samples[sorted_cluster[i]], 
+            metric='euclidean'
+        )
+        #add max of each cluster to max matrix
+        max_within_cluster =  np.append(max_within_cluster,np.amax(distance))
+    #get max value of max matrix
+    max_within_cluster = np.amax(max_within_cluster)
 
+    min_between_clusters = []
+    for i in range(len(sorted_cluster)):
+        #starts at an higher turn, to avoid duplicate calculation. e.g. [0,1] == [1,0]
+        for j in range(i, len(sorted_cluster)):
+            #avoid [0,0], [1,1] etc.
+            if(i != j):
+                distance = scipy.spatial.distance.cdist(
+                    train_samples[sorted_cluster[i]], 
+                    train_samples[sorted_cluster[j]], 
+                    metric='euclidean'
+                )
+                min_between_clusters = np.append(min_between_clusters, np.amin(distance))
+    min_between_clusters = np.amin(min_between_clusters)
+    #calculate dunn index
+    index = np.divide(min_between_clusters, max_within_cluster)
+    return index
 
 
 
 def main():
     #k = 5,7,9,10,12,15
-    k = [3]
-    train_samples, train_labels = load_data("simple_train.csv")
+    k = [10]
+    train_samples = load_data("train.csv")
+    sorted_cluster = []
     for i in range(len(k)):
         cluster_center = initial_cluster_centers(train_samples,k[i])
-        distance = euclidean_distance(train_samples, cluster_center)
-        new_cluster_centers = calculate_new_cluster_center(train_samples, distance)
-        print(distance)
-
+        for z in range(0, 200):
+            distance = euclidean_distance(train_samples, cluster_center)
+            sorted_cluster = assign_data_to_clusters(train_samples, distance)
+            new_cluster_centers = calculate_new_cluster_center(train_samples, sorted_cluster)
+            if(np.array_equal(cluster_center, new_cluster_centers)):
+                print("Stopped at run %ith:" % z)
+                print("Old and new cluster centers for k: %i are equal!" % k[i])
+                break
+            cluster_center = new_cluster_centers
+        dunn_index = calc_dunn_index(train_samples, sorted_cluster)
+        print("k: %i, dunn index: %f" % (k[i],dunn_index))
+            
+        
 main()
