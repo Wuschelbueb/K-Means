@@ -99,17 +99,19 @@ def calc_davies_index(cluster_centers, sorted_cluster, train_samples):
         for x in range(y, len(sorted_cluster)):
             #avoid [0,0], [1,1] etc.
             if(y != x):
+                #calculates distance between different cluster centers
                 distance = scipy.spatial.distance.euclidean(
                     cluster_centers[y], 
                     cluster_centers[x]
                 )
+                #calculates compactness
                 calculation = np.divide(
                     average_distance_to_center[y] + average_distance_to_center [x], 
                     distance
                 )
                 compactness[x] = calculation
         max_compactness = np.append(max_compactness, np.amax(compactness))
-
+    #the sum of maximas from compactness is divided with k
     davies_index = np.divide(np.sum(max_compactness),len(cluster_centers))
     return davies_index
 
