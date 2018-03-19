@@ -2,6 +2,7 @@ import numpy as np
 from numpy import inf
 import scipy.spatial
 import csv
+import time
 
 def load_data(filename):    
     #split csv-rows up; array[0] = size 1; array[1] = size 784
@@ -73,13 +74,36 @@ def calc_dunn_index(train_samples, sorted_cluster):
     index = np.divide(min_between_clusters, max_within_cluster)
     return index
 
+def calc_davies_index(cluster_centers, sorted_cluster, train_samples):
+    #has all the average distances to the center
+    average_distance_to_center = []
+    for i in range(len(sorted_cluster)):
+        distance_to_center = []
+        for j in range(len(train_samples[sorted_cluster[i]])):
+            #calc distance between cluster center and each point in the cluster
+            distance = scipy.spatial.distance.euclidean(
+                        cluster_centers[i], 
+                        train_samples[sorted_cluster[i][j]]
+            )
+            #append result to a temp array
+            distance_to_center = np.append(distance_to_center, distance)
+        #get the sum of this array
+        sum = np.sum(distance_to_center)
+        #divide it by the number of cluster points in the cluster
+        di = np.divide(sum, len(train_samples[sorted_cluster[i]]))
+        average_distance_to_center = np.append(average_distance_to_center,di)
 
+
+
+    
+    return 2
 
 def main():
     #k = 5,7,9,10,12,15
     k = [5,7,9,10,12,15]
-    train_samples = load_data("train.csv")
+    train_samples = load_data("simple_train.csv")
     sorted_cluster = []
+    cluster_center = []
     for i in range(len(k)):
         cluster_center = initial_cluster_centers(train_samples,k[i])
         for z in range(0, 200):
@@ -90,8 +114,11 @@ def main():
                 print("Stopped at iteration %i!" % z)
                 break
             cluster_center = new_cluster_centers
+        start_time = time.time()
         dunn_index = calc_dunn_index(train_samples, sorted_cluster)
-        print("k: %i, dunn index: %f" % (k[i],dunn_index))
+        stop_time = time.time()
+        calc_davies_index(cluster_center,sorted_cluster,train_samples)
+        print("k: %i; time: %.3f seconds; dunn index: %.3f" % (k[i], stop_time - start_time, dunn_index))
             
         
 main()
