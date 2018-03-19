@@ -77,7 +77,7 @@ def calc_dunn_index(train_samples, sorted_cluster):
 
 def main():
     #k = 5,7,9,10,12,15
-    k = [10]
+    k = [5,7,9,10,12,15]
     train_samples = load_data("train.csv")
     sorted_cluster = []
     for i in range(len(k)):
@@ -87,8 +87,7 @@ def main():
             sorted_cluster = assign_data_to_clusters(train_samples, distance)
             new_cluster_centers = calculate_new_cluster_center(train_samples, sorted_cluster)
             if(np.array_equal(cluster_center, new_cluster_centers)):
-                print("Stopped at run %ith:" % z)
-                print("Old and new cluster centers for k: %i are equal!" % k[i])
+                print("Stopped at iteration %i!" % z)
                 break
             cluster_center = new_cluster_centers
         dunn_index = calc_dunn_index(train_samples, sorted_cluster)
