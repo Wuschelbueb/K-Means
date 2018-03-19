@@ -92,33 +92,53 @@ def calc_davies_index(cluster_centers, sorted_cluster, train_samples):
         #divide it by the number of cluster points in the cluster
         di = np.divide(sum, len(train_samples[sorted_cluster[i]]))
         average_distance_to_center = np.append(average_distance_to_center,di)
+    max_compactness = []
+    for y in range(len(sorted_cluster)):
+        #starts at an higher turn, to avoid duplicate calculation. e.g. [0,1] == [1,0]
+        compactness = np.zeros(len(cluster_centers))
+        for x in range(y, len(sorted_cluster)):
+            #avoid [0,0], [1,1] etc.
+            if(y != x):
+                distance = scipy.spatial.distance.euclidean(
+                    cluster_centers[y], 
+                    cluster_centers[x]
+                )
+                calculation = np.divide(
+                    average_distance_to_center[y] + average_distance_to_center [x], 
+                    distance
+                )
+                compactness[x] = calculation
+        max_compactness = np.append(max_compactness, np.amax(compactness))
 
-
-
-    
-    return 2
+    davies_index = np.divide(np.sum(max_compactness),len(cluster_centers))
+    return davies_index
 
 def main():
-    #k = 5,7,9,10,12,15
     k = [5,7,9,10,12,15]
-    train_samples = load_data("simple_train.csv")
-    sorted_cluster = []
-    cluster_center = []
+    train_samples = load_data("train.csv")
+    results = np.zeros((len(k), 2))
     for i in range(len(k)):
         cluster_center = initial_cluster_centers(train_samples,k[i])
+        sorted_cluster = []
         for z in range(0, 200):
             distance = euclidean_distance(train_samples, cluster_center)
             sorted_cluster = assign_data_to_clusters(train_samples, distance)
             new_cluster_centers = calculate_new_cluster_center(train_samples, sorted_cluster)
             if(np.array_equal(cluster_center, new_cluster_centers)):
-                print("Stopped at iteration %i!" % z)
                 break
             cluster_center = new_cluster_centers
         start_time = time.time()
         dunn_index = calc_dunn_index(train_samples, sorted_cluster)
+        mid_time = time.time()
+        davies_index = calc_davies_index(cluster_center,sorted_cluster,train_samples)
         stop_time = time.time()
-        calc_davies_index(cluster_center,sorted_cluster,train_samples)
-        print("k: %i; time: %.3f seconds; dunn index: %.3f" % (k[i], stop_time - start_time, dunn_index))
-            
-        
+        print("k: %i" % k[i])
+        print("Stopped at iteration %i." % z)
+        print("Dunn index: %.3f; Time: %.3f seconds" % (dunn_index, mid_time - start_time))
+        print("Davies index: %.3f; Time: %.3f seconds \n" % (davies_index, stop_time - mid_time))
+        np.put(results[i], [0,1], [dunn_index, davies_index])
+    
+    print("Max Dunn Index: %.3f for k: %i" % (np.amax(results[:,0]), k[np.argmax(results[:,0])]))
+    print("Max Davies Index: %.3f for k: %i" % (np.amax(results[:,1]), k[np.argmax(results[:,1])]))
+  
 main()
